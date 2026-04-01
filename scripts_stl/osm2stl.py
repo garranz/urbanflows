@@ -155,11 +155,11 @@ def create_box_stl_xoff(filename,
     print(f"Box STL saved as '{filename}'.")
 
 
-def create_cylinder_stl(filename,
+def create_cylinder_stl_1(filename,
                         x_len, y_len, z_len,
                         r_offset=0.0,
                         z_offset=0.0,
-                        sections=128):
+                        sections=512):
     """
     Create a vertical cylinder (axis along Z) centered on the building cluster
     footprint, and save as STL.
@@ -198,6 +198,100 @@ def create_cylinder_stl(filename,
     print(f"  radius = {radius:.2f} m  (diagonal/2 + r_offset={r_offset})")
     print(f"  height = {total_z:.2f} m  (z_len + z_offset={z_offset})")
 
+
+def create_cylinder_stl(filename,
+                        x_len, y_len, z_len,
+                        r_offset=0.0,
+                        z_offset=0.0,
+                        sections=128,
+                        radial_rings=512):
+    """
+    Cylinder with a properly stitched watertight mesh.
+    Cap outer-ring vertices are shared with the lateral surface,
+    so no vertex-merging is needed and the mesh is guaranteed watertight.
+    """
+    radius  = 0.5 * np.sqrt(x_len**2 + y_len**2) + r_offset
+    total_z = z_len + z_offset
+    cx, cy  = x_len / 2.0, y_len / 2.0
+
+    thetas = np.linspace(0, 2 * np.pi, sections, endpoint=False)
+    radii  = np.linspace(0, radius, radial_rings + 1)  # r=0 … r=radius
+
+    # ------------------------------------------------------------------
+    # Vertex layout (same for bottom and top caps)
+    #   idx 0                              → centre
+    #   idx 1 + (ring-1)*sections + s      → ring ∈ [1..radial_rings], s ∈ [0..sections)
+    # ------------------------------------------------------------------
+    def ring_start(ring):
+        return 0 if ring == 0 else 1 + (ring - 1) * sections
+
+    def cap_xy():
+        """Return (N,2) XY coords for one cap, centre first then ring-by-ring."""
+        pts = [[0.0, 0.0]]
+        for r in radii[1:]:
+            pts.extend([[r * np.cos(t), r * np.sin(t)] for t in thetas])
+        return np.array(pts)
+
+    xy = cap_xy()           # shared XY pattern
+    n_cap = len(xy)         # 1 + radial_rings * sections
+
+    # Full vertex array: bottom cap, then top cap  (NO separate side verts)
+    bot_xyz = np.column_stack([xy, np.zeros(n_cap)])
+    top_xyz = np.column_stack([xy, np.full(n_cap, total_z)])
+    verts   = np.vstack([bot_xyz, top_xyz])   # shape (2*n_cap, 3)
+
+    # Top cap indices are offset by n_cap
+    def bi(ring, s):   return ring_start(ring) + s % sections          # bottom
+    def ti(ring, s):   return n_cap + ring_start(ring) + s % sections  # top
+
+    faces = []
+
+    # --- Bottom cap (normal = -Z → clockwise winding when viewed from below) ---
+    for s in range(sections):
+        faces.append([0, bi(1, s+1), bi(1, s)])          # inner fan
+    for ring in range(1, radial_rings):
+        for s in range(sections):
+            a0, a1 = bi(ring,   s), bi(ring,   s+1)
+            b0, b1 = bi(ring+1, s), bi(ring+1, s+1)
+            faces.append([a0, a1, b0])
+            faces.append([a1, b1, b0])
+
+    # --- Top cap (normal = +Z → counter-clockwise winding viewed from above) ---
+    for s in range(sections):
+        faces.append([n_cap, ti(1, s), ti(1, s+1)])      # inner fan
+    for ring in range(1, radial_rings):
+        for s in range(sections):
+            a0, a1 = ti(ring,   s), ti(ring,   s+1)
+            b0, b1 = ti(ring+1, s), ti(ring+1, s+1)
+            faces.append([a0, b0, a1])
+            faces.append([a1, b0, b1])
+
+    # --- Lateral surface: reuses outer-ring verts from both caps ---
+    outer = radial_rings
+    for s in range(sections):
+        b0, b1 = bi(outer, s), bi(outer, s+1)
+        t0, t1 = ti(outer, s), ti(outer, s+1)
+        faces.append([b0, b1, t0])
+        faces.append([b1, t1, t0])
+
+    # ------------------------------------------------------------------
+    mesh = trimesh.Trimesh(vertices=verts,
+                           faces=np.array(faces),
+                           process=False)   # no merging needed — verts are already shared
+
+    if not mesh.is_watertight:
+        print("  Warning: mesh is not watertight.")
+    if not mesh.is_volume:
+        print("  Warning: mesh volume check failed.")
+
+    mesh.apply_translation([cx, cy, 0.0])
+    mesh.export(filename)
+
+    print(f"Cylinder STL saved as '{filename}'.")
+    print(f"  radius        = {radius:.3f} m")
+    print(f"  height        = {total_z:.3f} m")
+    print(f"  sections      = {sections},  cap rings = {radial_rings}")
+    print(f"  total verts   = {len(verts)},  total faces = {len(faces)}")
 
 # ------------------------------------------------------------------------------
 
