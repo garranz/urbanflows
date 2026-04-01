@@ -1,0 +1,91 @@
+RUN_SERIAL
+SKEW_OPS
+ZERO 1.0e-7
+MAX_ITER 500
+COEFF_B 0.001
+
+SYNC_INTERVAL 1000
+CHECK_INTERVAL 1000
+
+DEFINE basenm athens_r1200_2_wind0
+
+
+DEFINE GAMMA 1.4        # assuming air
+DEFINE TINF  311        # assuming 38C
+
+# Standard atmosphere
+DEFINE PINF 101325
+DEFINE RHOINF 1.13445
+DEFINE MUINF 0.0000192482
+
+RHO_REF = $(RHOINF)
+T_REF   = $(TINF)
+MU_REF  = $(MUINF)  # laminar viscosity
+P_REF   = $(PINF)
+
+DEFINE ANGLE 0.0          # 0
+#DEFINE ANGLE 0.7853981634 # 1
+#DEFINE ANGLE 1.5707963268 # 2
+#DEFINE ANGLE 2.3561944902 # 3
+#DEFINE ANGLE 3.1415926536 # 4
+#DEFINE ANGLE 3.9269908170 # 5
+#DEFINE ANGLE 4.7123889804 # 6
+#DEFINE ANGLE 5.4977871438 # 7
+
+RESTART ./data/athens_r1200_2.mles
+INTERP_FROM_RESTART ./data/athens_r1200_1_wind0.00050000.sles
+
+INIT time 0
+INIT step 0 
+#NSTEPS 4000000
+RUNTIME 47.8
+TIMESTEP CFL 2
+
+#INIT U 10.*COS(ANGLE) 10.*SIN(ANGLE) 0.
+#INIT p $(PINF)
+#INIT T $(TINF)
+
+SGS_MODEL = VREMAN
+
+#################### BOUNDARY CONDITIONS ######################
+GROUND      =WM_ALG_ADIABATIC
+BUILDINGS   =WM_ALG_ADIABATIC
+
+S7          =CBC_PROFILE FILENAME ./wind_profile.txt RHO $(RHOINF) P $(PINF) A $(ANGLE)
+S0          =CBC_PROFILE FILENAME ./wind_profile.txt RHO $(RHOINF) P $(PINF) A $(ANGLE)
+S1          =CBC_PROFILE FILENAME ./wind_profile.txt RHO $(RHOINF) P $(PINF) A $(ANGLE)
+S2          =CBC_PROFILE FILENAME ./wind_profile.txt RHO $(RHOINF) P $(PINF) A $(ANGLE)
+
+S3          =NSCBC_OUTLET_P P_REF $(PINF) L_REF 2400
+S4          =NSCBC_OUTLET_P P_REF $(PINF) L_REF 2400
+S5          =NSCBC_OUTLET_P P_REF $(PINF) L_REF 2400
+S6          =NSCBC_OUTLET_P P_REF $(PINF) L_REF 2400
+
+TOP         =SLIP
+
+STATS T u p rho mu_sgs #*:tau_wall *:y_plus *:tau_wall(0) *:tau_wall(1) *:tau_wall(2)
+
+WRITE_RESULT INTERVAL=100000 NAME=./data/$(basenm)/$(basenm)
+
+RESET_STATS time 2000
+WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez100 \
+    INTERVAL=100000 GEOM=PLANE 0 0 100 0 0 1 \
+    FORMAT=VTK \
+    VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
+
+WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez50 \
+    INTERVAL=100000 GEOM=PLANE 0 0 50 0 0 1 \
+    FORMAT=VTK \
+    VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
+
+WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez10 \
+    INTERVAL=100000 GEOM=PLANE 0 0 10 0 0 1 \
+    FORMAT=VTK \
+    VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
+
+POINTCLOUD_PROBE NAME=./data/$(basenm)/$(basenm)_pcprobes INTERVAL=100000 \
+    PRECISION=DOUBLE FORMAT=BINARY\
+    GEOM=FILE ./shenzhen_input_points_9x10x30.txt\
+    VARS avg(u)[0] avg(u)[1] avg(u)[2]\
+    rms(u)[0] rms(u)[1] rms(u)[2] avg(p) rms(p) rey(u)[0] rey(u)[1] rey(u)[2]
+
