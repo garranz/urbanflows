@@ -57,18 +57,36 @@ awk -v city="$CITY" \
     -v mesh="$MESH" \
     -v angle_idx="$ANGLE_IDX" \
 '
-BEGIN { angle_rad = angle_idx * atan2(0,-1) / 4 }
+BEGIN {
+    angle_rad = angle_idx * atan2(0,-1) / 4
+    # inflow: 4 segments centered upstream of wind direction
+    # for angle index k: (k-2)%8, (k-1)%8, k%8, (k+1)%8
+    for (i = 0; i < 4; i++)
+        inflow[(angle_idx - 2 + i + 8) % 8] = 1
+}
  
 {
     gsub(/<CITY>/,  city)
     gsub(/<MESH>/,  mesh)
     gsub(/<ANGLE>/, angle_idx)
-    print
 }
  
 /^DEFINE basenm/ {
+    print
     printf "DEFINE ANGLE %.10f  # %d (%d deg)\n", angle_rad, angle_idx, angle_idx * 45
+    next
 }
+ 
+/^S[0-7][[:space:]]/ {
+    seg = substr($1, 2, 1) + 0
+    if (seg in inflow)
+        printf "%-12s=CBC_PROFILE FILENAME ./wind_profile.txt RHO $(RHOINF) P $(PINF) A $(ANGLE)\n", $1
+    else
+        printf "%-12s=NSCBC_OUTLET_P P_REF $(PINF) L_REF 2400\n", $1
+    next
+}
+ 
+{ print }
 ' "$TEMPLATE" > "$OUT_FILE"
-
-echo "[create_input_sim] Input file written  →  $(realpath "$OUT_FILE")"
+ 
+echo "[launch_sim] Input file written  →  $(realpath "$OUT_FILE")"

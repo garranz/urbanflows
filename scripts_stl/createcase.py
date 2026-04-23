@@ -20,6 +20,3 @@ if __name__ == "__main__":
     # Create the flow volume
     stl_name = f"{cityname}_r{y_offset}"
     fullstl( cityname, stl_name )
-
-
-

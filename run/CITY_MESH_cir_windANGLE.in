@@ -23,14 +23,14 @@ T_REF   = $(TINF)
 MU_REF  = $(MUINF)  # laminar viscosity
 P_REF   = $(PINF)
 
-RESTART ./data/<CITY>_r1200_<MESH>.mles
+RESTART ../stitch/<CITY>_r1200_<MESH>.mles
 
 INIT time 0
 INIT step 0 
 RUNTIME 47.8
 TIMESTEP CFL 2
 
-INIT U 10.*COS(ANGLE) 10.*SIN(ANGLE) 0.
+INIT U 10.*COS($(ANGLE)) 10.*SIN($(ANGLE)) 0.
 INIT p $(PINF)
 INIT T $(TINF)
 
@@ -54,25 +54,28 @@ TOP         =SLIP
 
 STATS T u p rho mu_sgs #*:tau_wall *:y_plus *:tau_wall(0) *:tau_wall(1) *:tau_wall(2)
 
-WRITE_RESULT INTERVAL=100000 NAME=./data/$(basenm)/$(basenm)
+DEFINE NVTUS 5000
+DEFINE NSAVE 50000
+
+WRITE_RESULT INTERVAL=$(NSAVE) NAME=./data/$(basenm)/$(basenm)
 
 RESET_STATS time 2000
 WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez100 \
-    INTERVAL=100000 GEOM=PLANE 0 0 100 0 0 1 \
+    INTERVAL=$(NVTUS) GEOM=PLANE 0 0 100 0 0 1 \
     FORMAT=VTK \
     VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
 
 WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez50 \
-    INTERVAL=100000 GEOM=PLANE 0 0 50 0 0 1 \
+    INTERVAL=$(NVTUS) GEOM=PLANE 0 0 50 0 0 1 \
     FORMAT=VTK \
     VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
 
 WRITE_DATA NAME=./data/$(basenm)/$(basenm)_vtu_planez10 \
-    INTERVAL=100000 GEOM=PLANE 0 0 10 0 0 1 \
+    INTERVAL=$(NVTUS) GEOM=PLANE 0 0 10 0 0 1 \
     FORMAT=VTK \
     VARS=u rey(u) rms(u) p avg(p) rms(p) avg(u)
 
-POINTCLOUD_PROBE NAME=./data/$(basenm)/$(basenm)_pcprobes INTERVAL=100000 \
+POINTCLOUD_PROBE NAME=./data/$(basenm)/$(basenm)_pcprobes INTERVAL=$(NVTUS) \
     PRECISION=DOUBLE FORMAT=BINARY\
     GEOM=FILE ./shenzhen_input_points_9x10x30.txt\
     VARS avg(u)[0] avg(u)[1] avg(u)[2]\
