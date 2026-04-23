@@ -11,7 +11,7 @@ from matplotlib.widgets import RadioButtons, CheckButtons
 import numpy as np
 from pathlib import Path
 
-datapath = Path('../run')
+datapath = Path('../data')
 
 
 class ProbeVisualizer:
@@ -19,10 +19,11 @@ class ProbeVisualizer:
         self.Nx, self.Ny, self.Nz = 9, 10, 30
         self.basenms = (
             'shenzhen_x2200_y1600_dummy_2',
-            'shenzhen_x1600_y800_dummy_2',
-            'shenzhen_x1600_y800_dummy_3'
+            #'shenzhen_x1600_y800_dummy_2',
+            'shenzhen_x1600_y800_dummy_3',
+            'shenzhen_r1200_dummy_2',
         )
-        self.case_labels = ('x2200_y1600_2', 'x1600_y800_2', 'x1600_y800_3')
+        self.case_labels = ('x2200_y1600_2', 'x1600_y800_3', 'r1200_2')
         self.colors = ('tab:blue', 'tab:orange', 'tab:green')
         
         # Data storage: {case_idx: {(i,j): {'vel_avg': ..., 'vel_rms': ..., ...}}}

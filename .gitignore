@@ -6,3 +6,7 @@ __pycache__/
 outs/
 
 *.stl
+*.blend
+*.blend1
+
+.DS_Store

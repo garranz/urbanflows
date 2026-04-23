@@ -11,12 +11,12 @@ DEFINE basenm athens_r1200_2_wind0
 
 
 DEFINE GAMMA 1.4        # assuming air
-DEFINE TINF  311        # assuming 38C
+DEFINE TINF  298        # assuming 25C
 
 # Standard atmosphere
 DEFINE PINF 101325
-DEFINE RHOINF 1.13445
-DEFINE MUINF 0.0000192482
+DEFINE RHOINF 1.21
+DEFINE MUINF 0.000018
 
 RHO_REF = $(RHOINF)
 T_REF   = $(TINF)
@@ -37,7 +37,6 @@ INTERP_FROM_RESTART ./data/athens_r1200_1_wind0.00050000.sles
 
 INIT time 0
 INIT step 0 
-#NSTEPS 4000000
 RUNTIME 47.8
 TIMESTEP CFL 2
 
